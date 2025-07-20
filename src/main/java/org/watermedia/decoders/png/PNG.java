@@ -3,9 +3,7 @@ package org.watermedia.decoders.png;
 import org.watermedia.decoders.IDecoder;
 import org.watermedia.decoders.Image;
 import org.watermedia.decoders.ImageDecodingException;
-import org.watermedia.decoders.png.chunks.ACTL;
-import me.srrapero720.watermedia.decoders.png.chunks.FCTL;
-import org.watermedia.decoders.png.chunks.FCTL;
+import org.watermedia.decoders.png.chunks.*;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -22,22 +20,27 @@ public class PNG implements IDecoder {
 
     // TL is the chunk
     static final int[] PNGF_SIG = new int[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}; // 0x8950_4E47_0D0A_1A0A
-
-
     private PNG() {}
 
-    public BufferedImage[] decode(ByteBuffer buffer) {
-        return new PNGDecoder(buffer).decode();
+    public boolean supported(ByteBuffer buffer) {
+        buffer.mark();
+        for (int value: PNGF_SIG) {
+            if (buffer.get() != value) {
+                buffer.reset();
+                buffer.flip();
+                return false;
+            }
+        }
+        return true; // READY TO DECODE
     }
 
     // Layout: https://www.w3.org/TR/png/#5Chunk-layout
-    BufferedImage[] decode() throws ImageDecodingException {
-        buffer.flip().position(PNGF_SIG.length); // skip png signature
-        ACTL actl = readACTL();
+    public BufferedImage[] decode(ByteBuffer buffer) throws ImageDecodingException {
+        ACTL actl = ACTL.read(buffer);
 
         Set<Image> images = new HashSet<>();
-        for (int i = 0; i < actl.frameCount; i++) {
-            FCTL frameData = FCTL();
+        for (int i = 0; i < actl.frameCount(); i++) {
+            FCTL frameData = FCTL.read(buffer);
             int chunkSize = buffer.getInt();
             int sig = buffer.getInt();
 
@@ -98,16 +101,5 @@ public class PNG implements IDecoder {
 
         inflate.end();
         return ByteBuffer.wrap(data);
-    }
-
-    private ACTL readACTL() {
-        while (true) {
-            int chunkSize = buffer.getInt();
-            int sig = buffer.getInt();
-
-            if (sig == ACTL_SIG) {
-                return new ACTL(buffer.getInt(), buffer.getInt(), buffer.getInt());
-            }
-        }
     }
 }
