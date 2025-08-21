@@ -1,21 +1,64 @@
 plugins {
     id 'java'
+
+}
+
+base {
+    archivesName = id
+    libsDirectory = new File("builtjars/")
 }
 
 java {
+    withSourcesJar()
     targetCompatibility = sourceCompatibility = JavaVersion.VERSION_17
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
 test {
     useJUnitPlatform()
 }
+
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    include
+    include.extendsFrom(implementation)
+    library
+}
+
+sourceSets {
+    // SHADOW
+    main.compileClasspath += configurations.include
+    main.runtimeClasspath += configurations.include
+    test.compileClasspath += configurations.include
+    test.runtimeClasspath += configurations.include
+
+    // LIBRARY
+    main.compileClasspath += configurations.library
+    test.compileClasspath += configurations.library
+    test.runtimeClasspath += configurations.library
+}
+
+dependencies {
+    library "org.apache.logging.log4j:log4j-api:$log4j_version"
+    library "org.apache.logging.log4j:log4j-core:$log4j_version"
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+jar {
+    manifest {
+        attributes "Specification-Title": id
+        attributes "Specification-Vendor": authors
+        attributes "Specification-Version": version
+        attributes "Implementation-Title": name
+        attributes "Implementation-Version": version
+        attributes "Implementation-Vendor": authors
+        attributes "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+    }
+}
+
 
